@@ -11,7 +11,7 @@ class ClimaDeviationApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'ClimaDéviation WebApp',
+      title: 'ClimaDéviation jg WebApp',
       theme: ThemeData(
         primarySwatch: Colors.blue,
         visualDensity: VisualDensity.adaptivePlatformDensity,
