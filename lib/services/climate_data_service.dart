@@ -3,9 +3,13 @@ import 'package:flutter/services.dart';
 import '../models/climate_normal_model.dart';
 
 class ClimateDataService {
+  // static const Map<String, String> _assetPaths = {
+  //   '00460_Berus': 'assets/data/fichier_moyenne_jour_00460_Berus_1961_1990_gemini_pro25.csv',
+  //   '04336_Saarbrücken-Ensheim': 'assets/data/fichier_moyenne_jour_04336_Saarbrücken-Ensheim_1961_1990_gemini_pro25.csv',
+  // };
   static const Map<String, String> _assetPaths = {
-    '00460_Berus': 'assets/data/fichier_moyenne_jour_00460_Berus_1961_1990_gemini_pro25.csv',
-    '04336_Saarbrücken-Ensheim': 'assets/data/fichier_moyenne_jour_04336_Saarbrücken-Ensheim_1961_1990_gemini_pro25.csv',
+    '00460_Berus': 'assets/data/climatologie_berus_00460.csv',
+    '04336_Saarbrücken-Ensheim': 'assets/data/climatologie_sarrebruck_04336.csv',
   };
 
   Future<List<ClimateNormal>> loadClimateNormals(String locationKey) async {

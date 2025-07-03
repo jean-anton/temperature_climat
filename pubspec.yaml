@@ -94,8 +94,10 @@ flutter:
   # see https://flutter.dev/to/font-from-package
 
   assets:
-    - assets/data/fichier_moyenne_jour_00460_Berus_1961_1990_gemini_pro25.csv
-    - assets/data/fichier_moyenne_jour_04336_Saarbrücken-Ensheim_1961_1990_gemini_pro25.csv
+#    - assets/data/fichier_moyenne_jour_00460_Berus_1961_1990_gemini_pro25.csv
+#    - assets/data/fichier_moyenne_jour_04336_Saarbrücken-Ensheim_1961_1990_gemini_pro25.csv
+    - assets/data/climatologie_berus_00460.csv
+    - assets/data/climatologie_sarrebruck_04336.csv
 #
 #  fonts:
 #    - family: Roboto
