@@ -44,11 +44,15 @@ class DailyForecast {
   });
 
   String get formattedDate {
+    // const months = [
+    //   'janvier', 'février', 'mars', 'avril', 'mai', 'juin',
+    //   'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'
+    // ];
+
     const months = [
-      'janvier', 'février', 'mars', 'avril', 'mai', 'juin',
-      'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'
+      'Jan', 'Fev', 'Mar', 'Avr', 'Mai', 'Juin', 'Juil', 'Aou', 'Sep', 'Oct', 'Nov', 'Dec'
     ];
-    
+
     return '${date.day} ${months[date.month - 1]}';
   }
 

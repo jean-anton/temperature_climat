@@ -44,12 +44,12 @@ class WeatherDeviation {
 
   String get maxDeviationText {
     final sign = maxDeviation >= 0 ? '+' : '';
-    return '${sign}${maxDeviation.toStringAsFixed(1)}°C';
+    return '${sign}${maxDeviation.toStringAsFixed(0)}°';
   }
 
   String get minDeviationText {
     final sign = minDeviation >= 0 ? '+' : '';
-    return '${sign}${minDeviation.toStringAsFixed(1)}°C';
+    return '${sign}${minDeviation.toStringAsFixed(0)}°';
   }
 
   String get avgDeviationText {

@@ -17,30 +17,32 @@ class WeatherTable extends StatelessWidget {
   Widget build(BuildContext context) {
     final climateService = ClimateDataService();
 
+    // Note : Assurez-vous que le widget parent de ce SingleChildScrollView
+    // n'a pas de padding horizontal si vous voulez que le tableau touche le bord.
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       child: DataTable(
-        columnSpacing: 16,
+        horizontalMargin: 0, // Supprime l'espace à gauche et à droite du tableau
+        columnSpacing: 0,    // Supprime l'espace entre les colonnes
         headingRowColor: MaterialStateProperty.all(Colors.grey[100]),
         columns: const [
           DataColumn(
             label: Text('Date', style: TextStyle(fontWeight: FontWeight.bold)),
           ),
           DataColumn(
-            label: Text('Temp Max', style: TextStyle(fontWeight: FontWeight.bold)),
+            label: Text('Max', style: TextStyle(fontWeight: FontWeight.bold)),
             numeric: true,
           ),
           DataColumn(
-            label: Text('Écart Max', style: TextStyle(fontWeight: FontWeight.bold)),
-            numeric: true,
-          ),
-
-          DataColumn(
-            label: Text('Temp Min', style: TextStyle(fontWeight: FontWeight.bold)),
+            label: Text('DMax', style: TextStyle(fontWeight: FontWeight.bold)),
             numeric: true,
           ),
           DataColumn(
-            label: Text('Écart Min', style: TextStyle(fontWeight: FontWeight.bold)),
+            label: Text('Min', style: TextStyle(fontWeight: FontWeight.bold)),
+            numeric: true,
+          ),
+          DataColumn(
+            label: Text('DMin', style: TextStyle(fontWeight: FontWeight.bold)),
             numeric: true,
           ),
           DataColumn(
@@ -51,7 +53,6 @@ class WeatherTable extends StatelessWidget {
             label: Text('Normale Min', style: TextStyle(fontWeight: FontWeight.bold)),
             numeric: true,
           ),
-
           DataColumn(
             label: Text('Écart Moyen', style: TextStyle(fontWeight: FontWeight.bold)),
             numeric: true,
@@ -68,30 +69,36 @@ class WeatherTable extends StatelessWidget {
           return DataRow(
             cells: [
               DataCell(
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      dailyForecast.formattedDate,
-                      style: const TextStyle(fontWeight: FontWeight.w500),
-                    ),
-                    Text(
-                      _getDayOfWeek(dailyForecast.date),
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.grey[600],
+                // On ajoute un padding ici pour recréer un peu d'espace
+                // uniquement pour la première cellule, pour la lisibilité.
+                Padding(
+                  padding: const EdgeInsets.only(left: 8.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        '${_getDayOfWeek(dailyForecast.date)} ${dailyForecast.formattedDate}',
+                        style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 20),
                       ),
-                    ),
-                  ],
+                      // Text(
+                      //   _getDayOfWeek(dailyForecast.date),
+                      //   style: TextStyle(
+                      //     fontSize: 16,
+                      //     color: Colors.grey[600],
+                      //   ),
+                      // ),
+                    ],
+                  ),
                 ),
               ),
               DataCell(
                 Text(
-                  '${dailyForecast.temperatureMax.toStringAsFixed(1)}°C',
+                  '  ${dailyForecast.temperatureMax.toStringAsFixed(0)}° ',
                   style: const TextStyle(
-                    color: Colors.red,
-                    fontWeight: FontWeight.w500,
+                    color: Colors.black,
+                    fontWeight: FontWeight.w900,
+                    fontSize: 20,
                   ),
                 ),
               ),
@@ -107,18 +114,19 @@ class WeatherTable extends StatelessWidget {
                     style: const TextStyle(
                       color: Colors.white,
                       fontWeight: FontWeight.bold,
-                      fontSize: 12,
+                      fontSize: 16,
                     ),
                   ),
                 ),
               ),
-
               DataCell(
+
                 Text(
-                  '${dailyForecast.temperatureMin.toStringAsFixed(1)}°C',
+                  '    ${dailyForecast.temperatureMin.toStringAsFixed(0)}° ',
                   style: const TextStyle(
                     color: Colors.blue,
-                    fontWeight: FontWeight.w500,
+                    fontWeight: FontWeight.w900,
+                    fontSize: 20,
                   ),
                 ),
               ),
@@ -134,12 +142,11 @@ class WeatherTable extends StatelessWidget {
                     style: const TextStyle(
                       color: Colors.white,
                       fontWeight: FontWeight.bold,
-                      fontSize: 12,
+                      fontSize: 16,
                     ),
                   ),
                 ),
               ),
-
               DataCell(
                 Text(
                   deviation.normal != null
@@ -186,7 +193,7 @@ class WeatherTable extends StatelessWidget {
 
   String _getDayOfWeek(DateTime date) {
     const days = [
-      'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'
+      'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'
     ];
     return days[date.weekday - 1];
   }
