@@ -65,7 +65,7 @@ class WeatherTable extends StatelessWidget {
             dailyForecast.dayOfYear,
             climateNormals,
           );
-
+          // print("####CJG ${dailyForecast.temperatureMax}");
           return DataRow(
             cells: [
               DataCell(

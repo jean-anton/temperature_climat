@@ -26,7 +26,7 @@ class _HomeScreenState extends State<HomeScreen> {
   List<ClimateNormal> _climateNormals = [];
   bool _isLoading = false;
   String? _errorMessage;
-  bool _showChart = false;
+  bool _showChart = true;
 
   final Map<String, String> _locations = {
     '00460_Berus': 'Berus',
@@ -35,9 +35,10 @@ class _HomeScreenState extends State<HomeScreen> {
 
   final Map<String, String> _models = {
     'best_match': 'Best Match',
-    'meteofrance_seamless': 'ARPEGE (Météo-France)',
-    'icon_seamless': 'ICON/DWD',
+    'ecmwf_ifs025': 'ECMWF IFS',
     'gfs_seamless': 'GFS',
+    'meteofrance_seamless': 'ARPEGE',
+    'icon_seamless': 'ICON/DWD',
   };
 
   final Map<String, Map<String, double>> _locationCoordinates = {
@@ -63,11 +64,12 @@ class _HomeScreenState extends State<HomeScreen> {
       
       // Charger les prévisions météo
       final coords = _locationCoordinates[_selectedLocation]!;
-      final forecast = await _weatherService.getWeatherForecast(
+      final WeatherForecast forecast = await _weatherService.getWeatherForecast(
         coords['lat']!,
         coords['lon']!,
         _selectedModel,
       );
+      //print("####CJG 566 forecast:\n${forecast.toString()}");
 
       setState(() {
         _climateNormals = normals;
@@ -121,18 +123,17 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ),
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(2.0),
+          padding: const EdgeInsets.all(0.0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              _buildControlPanel(),
-              const SizedBox(height: 24),
               if (_isLoading)
                 const LoadingIndicator()
               else if (_errorMessage != null)
                 ErrorDisplay(message: _errorMessage!)
               else if (_forecast != null)
                 _buildWeatherDisplay(),
+              _buildControlPanel(),
             ],
           ),
         ),
@@ -143,93 +144,83 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _buildControlPanel() {
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(16.0),
+        padding: const EdgeInsets.all(0.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: SegmentedButton<String>(
+                // Create segments by mapping over your _models map
+                segments: _models.entries.map((entry) {
+                  return ButtonSegment<String>(
+                    value: entry.key,
+                    label: Text(entry.value),
+                  );
+                }).toList(),
+                // The button's state is driven by your _selectedModel variable
+                selected: {_selectedModel},
+                // When a new model is selected, call your existing update logic
+                onSelectionChanged: (Set<String> newSelection) {
+                  // The _onModelChanged method already handles setState and data loading
+                  _onModelChanged(newSelection.first);
+                },
+              ),
+            ),
+
             const Text(
               'Paramètres',
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 16),
-            Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text('Lieu:', style: TextStyle(fontWeight: FontWeight.w500)),
-                      const SizedBox(height: 8),
-                      DropdownButtonFormField<String>(
-                        value: _selectedLocation,
-                        decoration: const InputDecoration(
-                          border: OutlineInputBorder(),
-                          contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                        ),
-                        items: _locations.entries.map((entry) {
-                          return DropdownMenuItem<String>(
-                            value: entry.key,
-                            child: Text(entry.value),
-                          );
-                        }).toList(),
-                        onChanged: _onLocationChanged,
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text('Modèle:', style: TextStyle(fontWeight: FontWeight.w500)),
-                      const SizedBox(height: 8),
-                      DropdownButtonFormField<String>(
-                        value: _selectedModel,
-                        decoration: const InputDecoration(
-                          border: OutlineInputBorder(),
-                          contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                        ),
-                        items: _models.entries.map((entry) {
-                          return DropdownMenuItem<String>(
-                            value: entry.key,
-                            child: Text(entry.value),
-                          );
-                        }).toList(),
-                        onChanged: _onModelChanged,
-                      ),
-                    ],
-                  ),
-                ),
-              ],
+            // Location Dropdown
+            const Text('Lieu:', style: TextStyle(fontWeight: FontWeight.w500)),
+            const SizedBox(height: 8),
+            DropdownButtonFormField<String>(
+              value: _selectedLocation,
+              decoration: const InputDecoration(
+                border: OutlineInputBorder(),
+                contentPadding: EdgeInsets.symmetric(
+                    horizontal: 12, vertical: 8),
+              ),
+              items: _locations.entries.map((entry) {
+                return DropdownMenuItem<String>(
+                  value: entry.key,
+                  child: Text(entry.value),
+                );
+              }).toList(),
+              onChanged: _onLocationChanged,
             ),
             const SizedBox(height: 16),
-            Row(
-              children: [
-                const Text('Affichage:', style: TextStyle(fontWeight: FontWeight.w500)),
-                const SizedBox(width: 16),
-                SegmentedButton<bool>(
-                  segments: const [
-                    ButtonSegment<bool>(
-                      value: true,
-                      label: Text('Graphique'),
-                      icon: Icon(Icons.bar_chart),
-                    ),
-                    ButtonSegment<bool>(
-                      value: false,
-                      label: Text('Tableau'),
-                      icon: Icon(Icons.table_chart),
-                    ),
-                  ],
-                  selected: {_showChart},
-                  onSelectionChanged: (Set<bool> selection) {
-                    setState(() {
-                      _showChart = selection.first;
-                    });
-                  },
+            // Display Toggle (Chart/Table)
+            const Text(
+                'Affichage:', style: TextStyle(fontWeight: FontWeight.w500)),
+            const SizedBox(height: 8),
+            SegmentedButton<bool>(
+              segments: const [
+                ButtonSegment<bool>(
+                  value: true,
+                  label: Text('Graphique'),
+                  icon: Icon(Icons.bar_chart),
+                ),
+                ButtonSegment<bool>(
+                  value: false,
+                  label: Text('Tableau'),
+                  icon: Icon(Icons.table_chart),
                 ),
               ],
+              selected: {_showChart},
+              onSelectionChanged: (Set<bool> selection) {
+                setState(() {
+                  _showChart = selection.first;
+                });
+              },
             ),
+            const SizedBox(height: 16),
+            // --- NEW: Model Selection SegmentedButton ---
+            const Text(
+                'Modèle:', style: TextStyle(fontWeight: FontWeight.w500)),
+            const SizedBox(height: 8),
           ],
         ),
       ),
@@ -243,18 +234,22 @@ class _HomeScreenState extends State<HomeScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'Prévisions météo - ${_locations[_selectedLocation]}',
-              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            Row(
+              children: [
+                Text(
+                  '${_locations[_selectedLocation]}',
+                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+                Text(
+                  '  Modèle: ${_models[_selectedModel]}',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Colors.grey[600],
+                  ),
+                ),
+              ],
             ),
-            Text(
-              'Modèle: ${_models[_selectedModel]}',
-              style: TextStyle(
-                fontSize: 14,
-                color: Colors.grey[600],
-              ),
-            ),
-            const SizedBox(height: 16),
+            // const SizedBox(height: 16),
             if (_showChart)
               // Container()
               WeatherChart(
