@@ -7,7 +7,9 @@ import '../widgets/weather_chart_widget.dart';
 import '../widgets/weather_table_widget.dart';
 import '../widgets/loading_indicator_widget.dart';
 import '../widgets/error_display_widget.dart';
-
+import 'package:intl/intl.dart';
+// ADD THIS IMPORT: Required for date formatting initialization.
+import 'package:intl/date_symbol_data_local.dart';
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
@@ -61,13 +63,16 @@ class _HomeScreenState extends State<HomeScreen> {
     try {
       // Charger les normales climatiques
       final normals = await _climateService.loadClimateNormals(_selectedLocation);
-      
+      await initializeDateFormatting('fr_FR', null);
+
       // Charger les prévisions météo
       final coords = _locationCoordinates[_selectedLocation]!;
       final WeatherForecast forecast = await _weatherService.getWeatherForecast(
-        coords['lat']!,
-        coords['lon']!,
-        _selectedModel,
+        latitude: coords['lat']!,
+        longitude: coords['lon']!,
+        model: _selectedModel,
+        locationName: _locations[_selectedLocation]!,
+
       );
       //print("####CJG 566 forecast:\n${forecast.toString()}");
 
