@@ -36,7 +36,7 @@ dependencies:
   syncfusion_flutter_charts:
   # Charts
   fl_chart: ^0.65.0
-
+  flutter_svg: ^2.0.9
   # UI components
   cupertino_icons: ^1.0.2
 
@@ -107,6 +107,7 @@ flutter:
 #    - assets/data/fichier_moyenne_jour_04336_Saarbrücken-Ensheim_1961_1990_gemini_pro25.csv
     - assets/data/climatologie_berus_00460.csv
     - assets/data/climatologie_sarrebruck_04336.csv
+    - assets/google_weather_icons/v4/
 #
 #  fonts:
 #    - family: Roboto
