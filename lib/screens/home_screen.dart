@@ -23,7 +23,7 @@ class _HomeScreenState extends State<HomeScreen> {
   
   // String _selectedLocation = '00460_Berus';
   String _selectedLocation = '04336_Saarbrücken-Ensheim';
-  String _selectedModel = 'best_match';
+  String _selectedModel = 'ecmwf_ifs025';
   WeatherForecast? _forecast;
   List<ClimateNormal> _climateNormals = [];
   bool _isLoading = false;
@@ -36,8 +36,8 @@ class _HomeScreenState extends State<HomeScreen> {
   };
 
   final Map<String, String> _models = {
-    'best_match': 'Best Match',
     'ecmwf_ifs025': 'ECMWF IFS',
+    'best_match': 'Best Match',
     'gfs_seamless': 'GFS',
     'meteofrance_seamless': 'ARPEGE',
     'icon_seamless': 'ICON/DWD',
