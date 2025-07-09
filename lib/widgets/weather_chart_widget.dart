@@ -1,7 +1,13 @@
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
+import 'package:intl/intl.dart';
 import 'package:syncfusion_flutter_charts/charts.dart';
-import '../models/weather_forecast_model.dart';
+import '../data/weather_icon_data.dart';
 import '../models/climate_normal_model.dart';
+import '../models/weather_forecast_model.dart';
+import '../models/weather_icon.dart';
 import '../services/climate_data_service.dart';
 
 // Data models for chart data. Kept here for simplicity as they are local to this widget.
@@ -12,9 +18,15 @@ class _ChartData {
   final double minTemp;
   final double? normalMaxTemp;
   final double? normalMinTemp;
-  // ADDED: Store individual deviations for direct use in labels.
   final double? maxTempDeviation;
   final double? minTempDeviation;
+  final String? iconPath;
+  final String? weatherDescription;
+  final double? precipitationSum;
+  final int? precipitationProbability;
+  final double? windSpeed;
+  final int? cloudCover;
+  final int? weatherCode;
 
   _ChartData({
     required this.x,
@@ -25,6 +37,13 @@ class _ChartData {
     this.normalMinTemp,
     this.maxTempDeviation,
     this.minTempDeviation,
+    this.iconPath,
+    this.weatherDescription,
+    this.precipitationSum,
+    this.precipitationProbability,
+    this.windSpeed,
+    this.cloudCover,
+    this.weatherCode,
   });
 }
 
@@ -62,21 +81,20 @@ class _WeatherChartState extends State<WeatherChart> {
   final ClimateDataService _climateService = ClimateDataService();
   bool _showDeviations = false;
 
-  // State variables to hold pre-calculated chart data.
-  // This is more performant as data is not recalculated on every build.
   late List<_ChartData> _chartData;
   late List<_DeviationChartData> _deviationChartData;
+  late final Map<String, WeatherIcon> _weatherIconMap;
 
   @override
   void initState() {
     super.initState();
+    _weatherIconMap = {for (var icon in weatherIcons) icon.code: icon};
     _prepareChartData();
   }
 
   @override
   void didUpdateWidget(WeatherChart oldWidget) {
     super.didUpdateWidget(oldWidget);
-    // If the input forecast changes, recalculate the chart data.
     if (widget.forecast != oldWidget.forecast ||
         widget.climateNormals != oldWidget.climateNormals) {
       _prepareChartData();
@@ -84,7 +102,6 @@ class _WeatherChartState extends State<WeatherChart> {
   }
 
   /// Prepares all data needed for the charts.
-  /// This is called once, preventing recalculation on every widget build.
   void _prepareChartData() {
     _chartData = [];
     _deviationChartData = [];
@@ -96,7 +113,8 @@ class _WeatherChartState extends State<WeatherChart> {
         forecast.dayOfYear,
       );
 
-      // --- IMPROVEMENT: Calculate individual deviations for labels ---
+      final weatherIcon = _weatherIconMap[forecast.weatherCode?.toString()];
+
       double? maxDeviation;
       if (normal?.temperatureMax != null) {
         maxDeviation = forecast.temperatureMax - normal!.temperatureMax;
@@ -114,9 +132,15 @@ class _WeatherChartState extends State<WeatherChart> {
         minTemp: forecast.temperatureMin,
         normalMaxTemp: normal?.temperatureMax,
         normalMinTemp: normal?.temperatureMin,
-        // Store the calculated deviations
         maxTempDeviation: maxDeviation,
         minTempDeviation: minDeviation,
+        iconPath: weatherIcon?.iconPath,
+        weatherDescription: weatherIcon?.descriptionFr,
+        precipitationSum: forecast.precipitationSum,
+        precipitationProbability: forecast.precipitationProbabilityMax,
+        windSpeed: forecast.windSpeedMax,
+        cloudCover: forecast.cloudCoverMean,
+        weatherCode: forecast.weatherCode,
       ));
 
       // Prepare data for the deviation chart
@@ -157,7 +181,6 @@ class _WeatherChartState extends State<WeatherChart> {
             ),
           ],
         ),
-        // const SizedBox(height: 16),
         SizedBox(
           height: 400,
           child: AnimatedSwitcher(
@@ -167,127 +190,228 @@ class _WeatherChartState extends State<WeatherChart> {
                 : _buildTemperatureChart(),
           ),
         ),
-        // const SizedBox(height: 16),
-        // _buildLegend(),
       ],
     );
   }
 
   Widget _buildTemperatureChart() {
-    return SfCartesianChart(
-      key: const ValueKey('temp_chart'), // Key for AnimatedSwitcher
-      primaryXAxis: CategoryAxis(
-        // title: AxisTitle(text: 'Date'),
-        labelStyle: const TextStyle(
-          color: Colors.grey,
-          fontWeight: FontWeight.bold,
-          fontSize: 12,
-        ),
+    return ScrollConfiguration(
+      behavior: const MaterialScrollBehavior().copyWith(
+        dragDevices: {
+          PointerDeviceKind.touch,
+          PointerDeviceKind.mouse,
+        },
       ),
-      primaryYAxis: NumericAxis(
-        // title: AxisTitle(text: 'Température (°C)'),
-        labelStyle: const TextStyle(
-          color: Colors.black,
-          fontWeight: FontWeight.bold,
-          fontSize: 14,
-        ),
-        interval: 5,
-        labelFormat: '{value}°',
-      ),
-      legend: Legend(isVisible: false),
-      tooltipBehavior: TooltipBehavior(
-        enable: true,
-        color: Colors.blueGrey,
-        textStyle: const TextStyle(
-          color: Colors.white,
-          fontWeight: FontWeight.bold,
-          fontSize: 14,
-        ),
-      ),
-      zoomPanBehavior: ZoomPanBehavior(
-        enablePinching: true,
-        enablePanning: true,
-        enableDoubleTapZooming: true,
-      ),
-      series: <CartesianSeries>[
-        // Actual temperatures
-        LineSeries<_ChartData, String>(
-          animationDuration: 100,
-          dataSource: _chartData,
-          xValueMapper: (_ChartData data, _) =>
-          '${data.date.day}/${data.date.month}',
-          yValueMapper: (_ChartData data, _) => data.maxTemp,
-          name: 'Température maximum prévue',
-          color: Colors.red,
-          width: 3,
-          markerSettings: const MarkerSettings(isVisible: true),
-          dataLabelSettings: DataLabelSettings(
-            isVisible: true,
-            labelAlignment: ChartDataLabelAlignment.top,
-            // --- IMPROVEMENT: Use a builder to create a two-line label ---
-            builder: (data, point, series, pointIndex, seriesIndex) {
-              final chartData = data as _ChartData;
-              return _buildTempLabel(
-                  chartData.maxTemp, chartData.maxTempDeviation);
-            },
-          ),
-        ),
-        LineSeries<_ChartData, String>(
-          animationDuration: 100,
-          dataSource: _chartData,
-          xValueMapper: (_ChartData data, _) =>
-          '${data.date.day}/${data.date.month}',
-          yValueMapper: (_ChartData data, _) => data.minTemp,
-          name: 'Température minimum prévue',
-          color: Colors.blue,
-          width: 3,
-          markerSettings: const MarkerSettings(isVisible: true),
-          dataLabelSettings: DataLabelSettings(
-            isVisible: true,
-            labelAlignment: ChartDataLabelAlignment.bottom,
-            // --- IMPROVEMENT: Use a builder to create a two-line label ---
-            builder: (data, point, series, pointIndex, seriesIndex) {
-              final chartData = data as _ChartData;
-              return _buildTempLabel(
-                  chartData.minTemp, chartData.minTempDeviation);
-            },
-          ),
-        ),
-        // Climate normals
-        LineSeries<_ChartData, String>(
-          animationDuration: 100,
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: SizedBox(
+          // width: MediaQuery.of(context).size.width * 2, // 2 times the window width
+          width: MediaQuery.of(context).size.width < 600 ? MediaQuery.of(context).size.width * 2  : MediaQuery.of(context).size.width, // 2 times the window width
+          height: 400, // Set a fixed height for the chart, adjust as needed
+          child: SfCartesianChart(
+            key: const ValueKey('temp_chart'),
+            annotations: <CartesianChartAnnotation>[
+              for (final data in _chartData)
+                if (data.iconPath != null)
+                  CartesianChartAnnotation(
+                    widget: SvgPicture.asset(
+                      data.iconPath!,
+                      width: 30,
+                      height: 30,
+                    ),
+                    coordinateUnit: CoordinateUnit.point,
+                    region: AnnotationRegion.chart,
+                    x: '${data.date.day}/${data.date.month}',
+                    y: data.maxTemp,
+                  ),
+            ],
+            primaryXAxis: CategoryAxis(
+              labelStyle: const TextStyle(
+                color: Colors.grey,
+                fontWeight: FontWeight.bold,
+                fontSize: 12,
+              ),
+            ),
+            primaryYAxis: NumericAxis(
+              labelStyle: const TextStyle(
+                color: Colors.black,
+                fontWeight: FontWeight.bold,
+                fontSize: 14,
+              ),
+              interval: 5,
+              labelFormat: '{value}°',
+            ),
+            legend: Legend(isVisible: false),
+            tooltipBehavior: TooltipBehavior(
+              enable: true,
+              duration: 10000,
+              color: Colors.transparent,
+              elevation: 0,
+              builder: (dynamic data, dynamic point, dynamic series, int pointIndex,
+                  int seriesIndex) {
+                final chartData = data as _ChartData;
+                final isMaxTemp = series.name == 'Température maximum prévue';
+                final temp = isMaxTemp ? chartData.maxTemp : chartData.minTemp;
+                final tempLabel = isMaxTemp ? 'Max' : 'Min';
 
-          dataSource:
-          _chartData.where((data) => data.normalMaxTemp != null).toList(),
-          xValueMapper: (_ChartData data, _) =>
-          '${data.date.day}/${data.date.month}',
-          yValueMapper: (_ChartData data, _) => data.normalMaxTemp,
-          name: 'Normale maximum',
-          color: Colors.red.withOpacity(0.5),
-          width: 3,
-          dashArray: const <double>[5, 5],
-          markerSettings: const MarkerSettings(isVisible: false),
+                return Container(
+                  width: 300,
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: Colors.blue[50],
+                    borderRadius: BorderRadius.circular(8),
+                    boxShadow: const [
+                      BoxShadow(
+                        color: Colors.black26,
+                        blurRadius: 4,
+                        offset: Offset(0, 2),
+                      )
+                    ],
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        DateFormat('EEEE d MMMM', 'fr_FR').format(chartData.date),
+                        style: const TextStyle(
+                          color: Colors.black,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                        ),
+                      ),
+                      const Divider(height: 10, color: Colors.black26),
+                      if (chartData.weatherDescription != null)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 6.0),
+                          child: Text(
+                            chartData.weatherDescription!,
+                            style: const TextStyle(
+                              color: Colors.black87,
+                              fontStyle: FontStyle.italic,
+                              fontSize: 17,
+                            ),
+                          ),
+                        ),
+                      _buildTooltipRow(
+                          Icons.thermostat, 'Temp. $tempLabel: ${temp.round()}°C'),
+                      if (chartData.precipitationSum != null &&
+                          chartData.precipitationSum! > 0)
+                        _buildTooltipRow(Icons.water_drop,
+                            'Précip: ${chartData.precipitationSum?.toStringAsFixed(1)} mm'),
+                      if (chartData.precipitationProbability != null)
+                        _buildTooltipRow(Icons.umbrella,
+                            'Prob. préc: ${chartData.precipitationProbability}%'),
+                      if (chartData.windSpeed != null)
+                        _buildTooltipRow(
+                            Icons.air, 'Vent: ${chartData.windSpeed?.round()} km/h'),
+                      if (chartData.cloudCover != null)
+                        _buildTooltipRow(
+                            Icons.cloud, 'Nébulosité: ${chartData.cloudCover}%'),
+                      if (chartData.weatherCode != null)
+                        _buildTooltipRow(
+                            Icons.tag, 'Code: ${chartData.weatherCode}'),
+                    ],
+                  ),
+                );
+              },
+            ),
+            zoomPanBehavior: ZoomPanBehavior(
+              enablePinching: true,
+              enablePanning: true,
+              enableDoubleTapZooming: true,
+            ),
+            series: <CartesianSeries>[
+              LineSeries<_ChartData, String>(
+                animationDuration: 100,
+                dataSource: _chartData,
+                xValueMapper: (_ChartData data, _) =>
+                '${data.date.day}/${data.date.month}',
+                yValueMapper: (_ChartData data, _) => data.maxTemp,
+                name: 'Température maximum prévue',
+                color: Colors.red,
+                width: 3,
+                markerSettings: const MarkerSettings(isVisible: false),
+                dataLabelSettings: DataLabelSettings(
+                  isVisible: true,
+                  labelAlignment: ChartDataLabelAlignment.top,
+                  builder: (data, point, series, pointIndex, seriesIndex) {
+                    final chartData = data as _ChartData;
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 30.0),
+                      child: _buildTempLabel(
+                          chartData.maxTemp, chartData.maxTempDeviation),
+                    );
+                  },
+                ),
+              ),
+              LineSeries<_ChartData, String>(
+                animationDuration: 100,
+                dataSource: _chartData,
+                xValueMapper: (_ChartData data, _) =>
+                '${data.date.day}/${data.date.month}',
+                yValueMapper: (_ChartData data, _) => data.minTemp,
+                name: 'Température minimum prévue',
+                color: Colors.blue,
+                width: 3,
+                markerSettings: const MarkerSettings(isVisible: true),
+                dataLabelSettings: DataLabelSettings(
+                  isVisible: true,
+                  labelAlignment: ChartDataLabelAlignment.bottom,
+                  builder: (data, point, series, pointIndex, seriesIndex) {
+                    final chartData = data as _ChartData;
+                    return _buildTempLabel(
+                        chartData.minTemp, chartData.minTempDeviation);
+                  },
+                ),
+              ),
+              LineSeries<_ChartData, String>(
+                animationDuration: 100,
+                dataSource:
+                _chartData.where((data) => data.normalMaxTemp != null).toList(),
+                xValueMapper: (_ChartData data, _) =>
+                '${data.date.day}/${data.date.month}',
+                yValueMapper: (_ChartData data, _) => data.normalMaxTemp,
+                name: 'Normale maximum',
+                color: Colors.red.withOpacity(0.5),
+                width: 3,
+                dashArray: const <double>[5, 5],
+                markerSettings: const MarkerSettings(isVisible: false),
+              ),
+              LineSeries<_ChartData, String>(
+                animationDuration: 500,
+                dataSource:
+                _chartData.where((data) => data.normalMinTemp != null).toList(),
+                xValueMapper: (_ChartData data, _) =>
+                '${data.date.day}/${data.date.month}',
+                yValueMapper: (_ChartData data, _) => data.normalMinTemp,
+                name: 'Normale minimum',
+                color: Colors.blue.withOpacity(0.5),
+                width: 3,
+                dashArray: const <double>[5, 5],
+                markerSettings: const MarkerSettings(isVisible: false),
+              ),
+            ],
+          ),
         ),
-        LineSeries<_ChartData, String>(
-          animationDuration: 500, // Key for AnimatedSwitcher
-          dataSource:
-          _chartData.where((data) => data.normalMinTemp != null).toList(),
-          xValueMapper: (_ChartData data, _) =>
-          '${data.date.day}/${data.date.month}',
-          yValueMapper: (_ChartData data, _) => data.normalMinTemp,
-          name: 'Normale minimum',
-          color: Colors.blue.withOpacity(0.5),
-          width: 3,
-          dashArray: const <double>[5, 5],
-          markerSettings: const MarkerSettings(isVisible: false),
-        ),
-      ],
+      ),
+    );
+  }
+  Widget _buildTooltipRow(IconData icon, String text) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 2.0),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, color: Colors.black54, size: 14),
+          const SizedBox(width: 8),
+          Text(text, style: const TextStyle(color: Colors.black, fontSize: 17)),
+        ],
+      ),
     );
   }
 
-  /// --- NEW HELPER WIDGET for creating the temperature + deviation label ---
   Widget _buildTempLabel(double temp, double? deviation) {
-    // If no deviation data is available, just show the temperature.
     if (deviation == null) {
       return Text('${temp.round()}°',
           style: const TextStyle(
@@ -296,7 +420,6 @@ class _WeatherChartState extends State<WeatherChart> {
               fontWeight: FontWeight.bold));
     }
 
-    // Format the deviation string with a '+' for positive values.
     final deviationText = '${deviation > 0 ? '+' : ''}${deviation.round()}°';
 
     return Row(
@@ -309,7 +432,7 @@ class _WeatherChartState extends State<WeatherChart> {
                 fontWeight: FontWeight.bold)),
         const SizedBox(height: 2),
         Text(
-          " ${deviationText}",
+          " $deviationText",
           style: TextStyle(
             color: _getDeviationColor(deviation),
             fontSize: 15,
@@ -372,8 +495,7 @@ class _WeatherChartState extends State<WeatherChart> {
       ),
       series: <CartesianSeries>[
         ColumnSeries<_DeviationChartData, String>(
-          animationDuration: 100, // Key for AnimatedSwitcher
-
+          animationDuration: 100,
           dataSource: _deviationChartData,
           xValueMapper: (_DeviationChartData data, _) =>
           '${data.date.day}/${data.date.month}',
@@ -388,113 +510,6 @@ class _WeatherChartState extends State<WeatherChart> {
           ),
           dataLabelSettings: const DataLabelSettings(isVisible: false),
         ),
-      ],
-    );
-  }
-
-  Widget _buildLegend() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.grey[50],
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.grey[300]!),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Légende',
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
-              fontSize: 16,
-            ),
-          ),
-          const SizedBox(height: 12),
-          AnimatedSwitcher(
-            duration: const Duration(milliseconds: 300),
-            child: _showDeviations
-                ? _buildDeviationLegendContent()
-                : _buildTemperatureLegendContent(),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildTemperatureLegendContent() {
-    return Column(
-      key: const ValueKey('temp_legend'),
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _buildLegendItem(Colors.red, 'Température maximum prévue'),
-        _buildLegendItem(Colors.blue, 'Température minimum prévue'),
-        _buildLegendItem(
-            Colors.red.withOpacity(0.5), 'Normale maximum (pointillés)'),
-        _buildLegendItem(
-            Colors.blue.withOpacity(0.5), 'Normale minimum (pointillés)'),
-      ],
-    );
-  }
-
-  Widget _buildDeviationLegendContent() {
-    return Column(
-      key: const ValueKey('dev_legend'),
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'Écarts à la normale (couleurs):',
-          style: TextStyle(fontWeight: FontWeight.w500, fontSize: 14),
-        ),
-        const SizedBox(height: 8),
-        Wrap(
-          spacing: 16.0,
-          runSpacing: 8.0,
-          children: [
-            _buildDeviationLegendItem(Colors.red[700]!, '> +2°C'),
-            _buildDeviationLegendItem(Colors.orange[600]!, '+1 à +2°C'),
-            _buildDeviationLegendItem(Colors.orange[400]!, '+0.5 à +1°C'),
-            _buildDeviationLegendItem(Colors.green[600]!, '-0.5 à +0.5°C'),
-            _buildDeviationLegendItem(Colors.blue[400]!, '-1 à -0.5°C'),
-            _buildDeviationLegendItem(Colors.blue[600]!, '-2 à -1°C'),
-            _buildDeviationLegendItem(Colors.blue[800]!, '< -2°C'),
-          ],
-        ),
-      ],
-    );
-  }
-
-  Widget _buildLegendItem(Color color, String label) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Row(
-        children: [
-          Container(
-            width: 20,
-            height: 3,
-            color: color,
-          ),
-          const SizedBox(width: 8),
-          Text(label, style: const TextStyle(fontSize: 13)),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildDeviationLegendItem(Color color, String label) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          width: 16,
-          height: 16,
-          decoration: BoxDecoration(
-            color: color,
-            borderRadius: BorderRadius.circular(4),
-          ),
-        ),
-        const SizedBox(width: 6),
-        Text(label, style: const TextStyle(fontSize: 12)),
       ],
     );
   }
