@@ -322,7 +322,8 @@ class _WeatherChartState extends State<WeatherChart> {
               enableDoubleTapZooming: true,
             ),
             series: <CartesianSeries>[
-              LineSeries<_ChartData, String>(
+              // --- UPDATED: Changed LineSeries to SplineSeries ---
+              SplineSeries<_ChartData, String>(
                 animationDuration: 100,
                 dataSource: _chartData,
                 xValueMapper: (_ChartData data, _) =>
@@ -345,7 +346,8 @@ class _WeatherChartState extends State<WeatherChart> {
                   },
                 ),
               ),
-              LineSeries<_ChartData, String>(
+              // --- UPDATED: Changed LineSeries to SplineSeries ---
+              SplineSeries<_ChartData, String>(
                 animationDuration: 100,
                 dataSource: _chartData,
                 xValueMapper: (_ChartData data, _) =>
@@ -365,7 +367,8 @@ class _WeatherChartState extends State<WeatherChart> {
                   },
                 ),
               ),
-              LineSeries<_ChartData, String>(
+              // --- UPDATED: Changed LineSeries to SplineSeries ---
+              SplineSeries<_ChartData, String>(
                 animationDuration: 100,
                 dataSource:
                 _chartData.where((data) => data.normalMaxTemp != null).toList(),
@@ -378,7 +381,8 @@ class _WeatherChartState extends State<WeatherChart> {
                 dashArray: const <double>[5, 5],
                 markerSettings: const MarkerSettings(isVisible: false),
               ),
-              LineSeries<_ChartData, String>(
+              // --- UPDATED: Changed LineSeries to SplineSeries ---
+              SplineSeries<_ChartData, String>(
                 animationDuration: 500,
                 dataSource:
                 _chartData.where((data) => data.normalMinTemp != null).toList(),
@@ -397,6 +401,8 @@ class _WeatherChartState extends State<WeatherChart> {
       ),
     );
   }
+
+
   Widget _buildTooltipRow(IconData icon, String text) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 2.0),
