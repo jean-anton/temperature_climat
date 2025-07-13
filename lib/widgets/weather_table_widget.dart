@@ -153,7 +153,8 @@ class WeatherTable extends StatelessWidget {
                       ? '${deviation.normal!.temperatureMax.toStringAsFixed(1)}°C'
                       : 'N/A',
                   style: TextStyle(
-                    color: Colors.red.withOpacity(0.7),
+                    // color: Colors.red.withOpacity(0.7),
+                    color: Colors.red..withAlpha((0.7*255).round()),
                   ),
                 ),
               ),
@@ -163,7 +164,9 @@ class WeatherTable extends StatelessWidget {
                       ? '${deviation.normal!.temperatureMin.toStringAsFixed(1)}°C'
                       : 'N/A',
                   style: TextStyle(
-                    color: Colors.blue.withOpacity(0.7),
+                    // color: Colors.blue.withOpacity(0.7),
+                    color: Colors.red..withAlpha((0.7*255).round()),
+
                   ),
                 ),
               ),

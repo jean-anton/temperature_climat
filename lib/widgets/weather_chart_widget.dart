@@ -81,6 +81,9 @@ class _WeatherChartState extends State<WeatherChart> {
   final ClimateDataService _climateService = ClimateDataService();
   bool _showDeviations = false;
 
+  // Create tooltip behavior instance to control tooltip visibility
+  late TooltipBehavior _tooltipBehavior;
+
   late List<_ChartData> _chartData;
   late List<_DeviationChartData> _deviationChartData;
   late final Map<String, WeatherIcon> _weatherIconMap;
@@ -89,6 +92,124 @@ class _WeatherChartState extends State<WeatherChart> {
   void initState() {
     super.initState();
     _weatherIconMap = {for (var icon in weatherIcons) icon.code: icon};
+
+    // Initialize tooltip behavior
+    _tooltipBehavior = TooltipBehavior(
+      enable: true,
+      shouldAlwaysShow: true,
+      color: Colors.transparent,
+      elevation: 0,
+      canShowMarker: false,
+      tooltipPosition: TooltipPosition.pointer,
+      builder: (dynamic data, dynamic point, dynamic series, int pointIndex,
+          int seriesIndex) {
+        final chartData = data as _ChartData;
+        final isMaxTemp = series.name == 'Température maximum prévue';
+        final temp = isMaxTemp ? chartData.maxTemp : chartData.minTemp;
+        final tempLabel = isMaxTemp ? 'Max' : 'Min';
+
+        return Stack(
+          clipBehavior: Clip.none,
+          children: [
+            // Main tooltip content container
+            Container(
+              width: 300,
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: Colors.black87,
+                borderRadius: BorderRadius.circular(8),
+                boxShadow: const [
+                  BoxShadow(
+                    color: Colors.black26,
+                    blurRadius: 4,
+                    offset: Offset(0, 2),
+                  )
+                ],
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (chartData.iconPath != null)
+                    Center(
+                      child: Padding(
+                        padding: const EdgeInsets.only(bottom: 8.0),
+                        child: SvgPicture.asset(
+                          chartData.iconPath!,
+                          width: 40,
+                          height: 40,
+                        ),
+                      ),
+                    ),
+                  Text(
+                    DateFormat('EEEE d MMMM', 'fr_FR').format(chartData.date),
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                    ),
+                  ),
+                  const Divider(height: 10, color: Colors.white24),
+                  if (chartData.weatherDescription != null)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 6.0),
+                      child: Text(
+                        chartData.weatherDescription!,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontStyle: FontStyle.italic,
+                          fontSize: 17,
+                        ),
+                      ),
+                    ),
+                  _buildTooltipRow(Icons.thermostat,
+                      'Temp. $tempLabel: ${temp.round()}°C'),
+                  if (chartData.precipitationSum != null &&
+                      chartData.precipitationSum! > 0)
+                    _buildTooltipRow(Icons.water_drop,
+                        'Précip: ${chartData.precipitationSum?.toStringAsFixed(1)} mm'),
+                  if (chartData.precipitationProbability != null)
+                    _buildTooltipRow(Icons.umbrella,
+                        'Prob. préc: ${chartData.precipitationProbability}%'),
+                  if (chartData.windSpeed != null)
+                    _buildTooltipRow(Icons.air,
+                        'Vent: ${chartData.windSpeed?.round()} km/h'),
+                  if (chartData.cloudCover != null)
+                    _buildTooltipRow(Icons.cloud,
+                        'Nébulosité: ${chartData.cloudCover}%'),
+                  if (chartData.weatherCode != null)
+                    _buildTooltipRow(
+                        Icons.tag, 'Code: ${chartData.weatherCode}'),
+                ],
+              ),
+            ),
+            // Close button positioned for better visibility and tap area
+            Positioned(
+              right: -8.0,
+              top: -8.0,
+              child: GestureDetector(
+                onTap: () {
+                  _tooltipBehavior.hide();
+                },
+                child: Container(
+                  padding: const EdgeInsets.all(4.0),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withOpacity(0.7),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.close,
+                    color: Colors.white,
+                    size: 18.0,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+
     _prepareChartData();
   }
 
@@ -166,23 +287,26 @@ class _WeatherChartState extends State<WeatherChart> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          children: [
-            const Text('Affichage des écarts:',
-                style: TextStyle(fontWeight: FontWeight.w500)),
-            const SizedBox(width: 16),
-            Switch(
-              value: _showDeviations,
-              onChanged: (value) {
-                setState(() {
-                  _showDeviations = value;
-                });
-              },
-            ),
-          ],
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8.0),
+          child: Row(
+            children: [
+              const Text('Affichage des écarts:',
+                  style: TextStyle(fontWeight: FontWeight.w500)),
+              const SizedBox(width: 16),
+              Switch(
+                value: _showDeviations,
+                onChanged: (value) {
+                  setState(() {
+                    _showDeviations = value;
+                  });
+                },
+              ),
+            ],
+          ),
         ),
         SizedBox(
-          height: 400,
+          height: 450, // Increased height to accommodate tooltips
           child: AnimatedSwitcher(
             duration: const Duration(milliseconds: 300),
             child: _showDeviations
@@ -205,19 +329,34 @@ class _WeatherChartState extends State<WeatherChart> {
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
         child: SizedBox(
-          // width: MediaQuery.of(context).size.width * 2, // 2 times the window width
-          width: MediaQuery.of(context).size.width < 600 ? MediaQuery.of(context).size.width * 2  : MediaQuery.of(context).size.width, // 2 times the window width
-          height: 400, // Set a fixed height for the chart, adjust as needed
+          width: MediaQuery.of(context).size.width < 600
+              ? MediaQuery.of(context).size.width * 2
+              : MediaQuery.of(context).size.width,
+          height: 400,
           child: SfCartesianChart(
-            key: const ValueKey('temp_chart'),
+            plotAreaBorderWidth: 0,
             annotations: <CartesianChartAnnotation>[
               for (final data in _chartData)
                 if (data.iconPath != null)
                   CartesianChartAnnotation(
-                    widget: SvgPicture.asset(
-                      data.iconPath!,
+                    widget: Container(
                       width: 30,
                       height: 30,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.2),
+                            blurRadius: 3,
+                            offset: const Offset(0, 1),
+                          ),
+                        ],
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.all(3.0),
+                        child: SvgPicture.asset(data.iconPath!),
+                      ),
                     ),
                     coordinateUnit: CoordinateUnit.point,
                     region: AnnotationRegion.chart,
@@ -242,88 +381,14 @@ class _WeatherChartState extends State<WeatherChart> {
               labelFormat: '{value}°',
             ),
             legend: Legend(isVisible: false),
-            tooltipBehavior: TooltipBehavior(
-              enable: true,
-              duration: 10000,
-              color: Colors.transparent,
-              elevation: 0,
-              builder: (dynamic data, dynamic point, dynamic series, int pointIndex,
-                  int seriesIndex) {
-                final chartData = data as _ChartData;
-                final isMaxTemp = series.name == 'Température maximum prévue';
-                final temp = isMaxTemp ? chartData.maxTemp : chartData.minTemp;
-                final tempLabel = isMaxTemp ? 'Max' : 'Min';
-
-                return Container(
-                  width: 300,
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: Colors.blue[50],
-                    borderRadius: BorderRadius.circular(8),
-                    boxShadow: const [
-                      BoxShadow(
-                        color: Colors.black26,
-                        blurRadius: 4,
-                        offset: Offset(0, 2),
-                      )
-                    ],
-                  ),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        DateFormat('EEEE d MMMM', 'fr_FR').format(chartData.date),
-                        style: const TextStyle(
-                          color: Colors.black,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 14,
-                        ),
-                      ),
-                      const Divider(height: 10, color: Colors.black26),
-                      if (chartData.weatherDescription != null)
-                        Padding(
-                          padding: const EdgeInsets.only(bottom: 6.0),
-                          child: Text(
-                            chartData.weatherDescription!,
-                            style: const TextStyle(
-                              color: Colors.black87,
-                              fontStyle: FontStyle.italic,
-                              fontSize: 17,
-                            ),
-                          ),
-                        ),
-                      _buildTooltipRow(
-                          Icons.thermostat, 'Temp. $tempLabel: ${temp.round()}°C'),
-                      if (chartData.precipitationSum != null &&
-                          chartData.precipitationSum! > 0)
-                        _buildTooltipRow(Icons.water_drop,
-                            'Précip: ${chartData.precipitationSum?.toStringAsFixed(1)} mm'),
-                      if (chartData.precipitationProbability != null)
-                        _buildTooltipRow(Icons.umbrella,
-                            'Prob. préc: ${chartData.precipitationProbability}%'),
-                      if (chartData.windSpeed != null)
-                        _buildTooltipRow(
-                            Icons.air, 'Vent: ${chartData.windSpeed?.round()} km/h'),
-                      if (chartData.cloudCover != null)
-                        _buildTooltipRow(
-                            Icons.cloud, 'Nébulosité: ${chartData.cloudCover}%'),
-                      if (chartData.weatherCode != null)
-                        _buildTooltipRow(
-                            Icons.tag, 'Code: ${chartData.weatherCode}'),
-                    ],
-                  ),
-                );
-              },
-            ),
+            tooltipBehavior: _tooltipBehavior,
             zoomPanBehavior: ZoomPanBehavior(
               enablePinching: true,
               enablePanning: true,
               enableDoubleTapZooming: true,
             ),
             series: <CartesianSeries>[
-              // --- UPDATED: Changed LineSeries to SplineSeries ---
-              SplineSeries<_ChartData, String>(
+              LineSeries<_ChartData, String>(
                 animationDuration: 100,
                 dataSource: _chartData,
                 xValueMapper: (_ChartData data, _) =>
@@ -346,8 +411,7 @@ class _WeatherChartState extends State<WeatherChart> {
                   },
                 ),
               ),
-              // --- UPDATED: Changed LineSeries to SplineSeries ---
-              SplineSeries<_ChartData, String>(
+              LineSeries<_ChartData, String>(
                 animationDuration: 100,
                 dataSource: _chartData,
                 xValueMapper: (_ChartData data, _) =>
@@ -367,30 +431,30 @@ class _WeatherChartState extends State<WeatherChart> {
                   },
                 ),
               ),
-              // --- UPDATED: Changed LineSeries to SplineSeries ---
-              SplineSeries<_ChartData, String>(
+              LineSeries<_ChartData, String>(
                 animationDuration: 100,
-                dataSource:
-                _chartData.where((data) => data.normalMaxTemp != null).toList(),
+                dataSource: _chartData
+                    .where((data) => data.normalMaxTemp != null)
+                    .toList(),
                 xValueMapper: (_ChartData data, _) =>
                 '${data.date.day}/${data.date.month}',
                 yValueMapper: (_ChartData data, _) => data.normalMaxTemp,
                 name: 'Normale maximum',
-                color: Colors.red.withOpacity(0.5),
+                color: Colors.red.withAlpha(128),
                 width: 3,
                 dashArray: const <double>[5, 5],
                 markerSettings: const MarkerSettings(isVisible: false),
               ),
-              // --- UPDATED: Changed LineSeries to SplineSeries ---
-              SplineSeries<_ChartData, String>(
+              LineSeries<_ChartData, String>(
                 animationDuration: 500,
-                dataSource:
-                _chartData.where((data) => data.normalMinTemp != null).toList(),
+                dataSource: _chartData
+                    .where((data) => data.normalMinTemp != null)
+                    .toList(),
                 xValueMapper: (_ChartData data, _) =>
                 '${data.date.day}/${data.date.month}',
                 yValueMapper: (_ChartData data, _) => data.normalMinTemp,
                 name: 'Normale minimum',
-                color: Colors.blue.withOpacity(0.5),
+                color: Colors.blue.withAlpha(128),
                 width: 3,
                 dashArray: const <double>[5, 5],
                 markerSettings: const MarkerSettings(isVisible: false),
@@ -402,16 +466,16 @@ class _WeatherChartState extends State<WeatherChart> {
     );
   }
 
-
   Widget _buildTooltipRow(IconData icon, String text) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 2.0),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, color: Colors.black54, size: 14),
+          Icon(icon, color: Colors.white70, size: 14),
           const SizedBox(width: 8),
-          Text(text, style: const TextStyle(color: Colors.black, fontSize: 17)),
+          Text(text,
+              style: const TextStyle(color: Colors.white, fontSize: 17)),
         ],
       ),
     );
